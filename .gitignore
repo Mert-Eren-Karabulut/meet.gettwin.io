@@ -16,7 +16,7 @@ bun.lock
 
 # personal env
 .env
-config.js
+# config.js is tracked — no secrets, all sensitive values come from .env
 docker-push.sh
 docker-compose.yml
 turnserver.conf
