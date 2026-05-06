@@ -2022,6 +2022,14 @@ button {
     transform: none;
 }
 
+#msgerCPList > .msger-private-chat-entry > .msger-chat-item.no-pointer {
+    cursor: default;
+}
+
+#msgerCPList > .msger-private-chat-entry > .msger-chat-item.no-pointer:hover {
+    background: transparent;
+}
+
 #searchPeerBarName {
     display: block;
     width: 100%;

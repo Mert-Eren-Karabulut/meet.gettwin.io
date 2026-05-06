@@ -28,6 +28,7 @@ const myRoomId = getId('myRoomId');
 const roomSessionDuration = getRoomDuration();
 const roomId = getRoomId();
 const myRoomUrl = window.location.origin + '/join/' + roomId; // share room url
+let gettwinAppUrl = ''; // app.gettwin.io base URL (populated from /buttons response)
 
 // Images
 const images = {
@@ -316,6 +317,8 @@ const msgerParticipantsList = getId('msgerParticipantsList');
 const searchPeerBarName = getId('searchPeerBarName');
 const msgerCPDropDownMenuBtn = getId('msgerCPDropDownMenuBtn');
 const msgerCPDropDownContent = getId('msgerCPDropDownContent');
+const msgerCPInviteBtn = getId('msgerCPInviteBtn');
+const msgerSidebarInviteBtn = getId('msgerSidebarInviteBtn');
 
 renderMsgerRoomActionsDropdown(msgerCPDropDownContent);
 renderMsgerRoomActionsDropdown(msgerSidebarDropDownContent, 'Desktop');
@@ -571,6 +574,7 @@ let myPeerName = getPeerName();
 let myPeerAvatar = getPeerAvatar();
 let myToken = getPeerToken(); // peer JWT
 let isPresenter = false; // True Who init the room (aka first peer joined)
+let configButtons = null; // Snapshot of server-configured buttons (set in getButtons)
 let myHandStatus = false;
 let myVideoStatus = false;
 let myAudioStatus = false;
@@ -940,7 +944,7 @@ function setTippy(element, content, placement) {
         }
         try {
             tippy(element, {
-                content: content,
+                content: (typeof t === 'function' ? t(content) : content),
                 placement: placement,
             });
         } catch (err) {
@@ -1061,8 +1065,8 @@ function getRoomDuration() {
             Swal.fire({
                 background: swBg,
                 position: 'center',
-                title: 'Time Limit Reached',
-                text: 'The room has reached its time limit and will close shortly',
+                title: t('Time Limit Reached'),
+                text: t('The room has reached its time limit and will close shortly'),
                 icon: 'warning',
                 timer: 6000, // 6 seconds
                 timerProgressBar: true,
@@ -1508,11 +1512,7 @@ function handleServerInfo(config) {
         handleRules(isPresenter);
     }
 
-    if (notify && peers_count == 1) {
-        shareRoomMeetingURL(true);
-    } else {
-        checkShareScreen();
-    }
+    checkShareScreen();
 
     checkChatOnJoin();
 }
@@ -1527,9 +1527,9 @@ function handleUnauthorized() {
         allowEscapeKey: false,
         background: swBg,
         imageUrl: images.forbidden,
-        title: 'Ops, Unauthorized',
-        text: 'The host has user authentication enabled',
-        confirmButtonText: `Login`,
+        title: t('Ops, Unauthorized'),
+        text: t('The host has user authentication enabled'),
+        confirmButtonText: t('Login'),
         showClass: { popup: 'animate__animated animate__fadeInDown' },
         hideClass: { popup: 'animate__animated animate__fadeOutUp' },
     }).then(() => {
@@ -1551,10 +1551,10 @@ function roomIsBusy() {
         background: swBg,
         imageUrl: images.forbidden,
         position: 'center',
-        title: 'Room is busy',
+        title: t('Room is busy'),
         html: `The room is limited to ${thisMaxRoomParticipants} users. <br/> Please try again later`,
         showDenyButton: false,
-        confirmButtonText: `OK`,
+        confirmButtonText: t('OK'),
         showClass: { popup: 'animate__animated animate__fadeInDown' },
         hideClass: { popup: 'animate__animated animate__fadeOutUp' },
     }).then((result) => {
@@ -1581,17 +1581,22 @@ function handleRules(isPresenter) {
         buttons.whiteboard.whiteboardLockBtn = false;
         //...
     } else {
+        // Helper: only re-enable if server config hasn't explicitly set it to false
+        const cfg = configButtons ? configButtons.settings : {};
+        const cfgW = configButtons ? configButtons.whiteboard : {};
+        const cfgAllows = (key) => cfg[key] !== false;
+
         buttons.main.showShareRoomBtn = true;
         buttons.settings.showMicOptionsBtn = true;
-        buttons.settings.showTabRoomParticipants = true;
-        buttons.settings.showTabRoomSecurity = true;
-        buttons.settings.showTabEmailInvitation = true;
-        buttons.settings.showLockRoomBtn = !isRoomLocked;
-        buttons.settings.showUnlockRoomBtn = isRoomLocked;
+        buttons.settings.showTabRoomParticipants = cfgAllows('showTabRoomParticipants');
+        buttons.settings.showTabRoomSecurity = cfgAllows('showTabRoomSecurity');
+        buttons.settings.showTabEmailInvitation = cfgAllows('showTabEmailInvitation');
+        buttons.settings.showLockRoomBtn = cfgAllows('showLockRoomBtn') && !isRoomLocked;
+        buttons.settings.showUnlockRoomBtn = cfgAllows('showUnlockRoomBtn') && isRoomLocked;
         buttons.remote.audioBtnClickAllowed = true;
         buttons.remote.videoBtnClickAllowed = true;
         buttons.remote.showKickOutBtn = true;
-        buttons.whiteboard.whiteboardLockBtn = true;
+        buttons.whiteboard.whiteboardLockBtn = cfgW.whiteboardLockBtn !== false;
     }
 
     handleButtonsRule();
@@ -1680,6 +1685,27 @@ function handleButtonsRule() {
         { element: tabRoomSecurity, display: buttons.settings.showTabRoomSecurity },
         { element: tabEmailInvitation, display: buttons.settings.showTabEmailInvitation },
         { element: noiseSuppressionBtn, display: buttons.settings.customNoiseSuppression && isRNNoiseSupported },
+        { element: getId('volumeBarRow'), display: buttons.settings.showVolumeBarRow },
+        { element: getId('soundsRow'), display: buttons.settings.showSoundsRow },
+        { element: getId('shareOnJoinButton'), display: buttons.settings.showShareRow },
+        { element: getId('keepButtonsVisibleButton'), display: buttons.settings.showButtonsVisibleRow },
+        { element: getId('keepAwakeButton'), display: buttons.settings.showKeepAwakeRow },
+        { element: getId('pinChatByDefaultRow'), display: buttons.settings.showPinChatRow },
+        { element: getId('sessionTimerTable'), display: buttons.settings.showSessionTimerRow },
+    ]);
+
+    // Settings sidebar tab buttons
+    displayElements([
+        { element: getId('tabRoomBtn'), display: buttons.settings.showTabRoom },
+        { element: getId('tabVideoBtn'), display: buttons.settings.showTabVideo },
+        { element: getId('tabAudioBtn'), display: buttons.settings.showTabAudio },
+        { element: getId('tabRecordingBtn'), display: buttons.settings.showTabRecording },
+        { element: getId('tabVideoShareBtn'), display: buttons.settings.showTabMedia },
+        { element: getId('tabProfileBtn'), display: buttons.settings.showTabProfile },
+        { element: getId('tabShortcutsBtn'), display: buttons.settings.showTabShortcuts },
+        { element: getId('tabNetworkBtn'), display: buttons.settings.showTabNetwork },
+        { element: getId('tabStylingBtn'), display: buttons.settings.showTabStyling },
+        { element: getId('tabLanguagesBtn'), display: buttons.settings.showTabLanguages },
     ]);
 
     // Whiteboard
@@ -1688,6 +1714,18 @@ function handleButtonsRule() {
         buttons.whiteboard.whiteboardLockBtn,
         buttons.whiteboard.whiteboardLockBtn ? 'flex' : undefined
     );
+
+    // Re-render room actions dropdown so server-config flags (e.g. captions) are applied
+    renderMsgerRoomActionsDropdown(msgerCPDropDownContent);
+    renderMsgerRoomActionsDropdown(msgerSidebarDropDownContent, 'Desktop');
+
+    // Hide the 3-dot toggle if the dropdown ended up empty
+    if (msgerCPDropDownMenuBtn && msgerCPDropDownContent && msgerCPDropDownContent.innerHTML.trim() === '') {
+        elemDisplay(msgerCPDropDownMenuBtn, false);
+    }
+    if (msgerSidebarDropDownMenuBtn && msgerSidebarDropDownContent && msgerSidebarDropDownContent.innerHTML.trim() === '') {
+        elemDisplay(msgerSidebarDropDownMenuBtn, false);
+    }
 }
 
 /**
@@ -1702,10 +1740,15 @@ async function getButtons() {
         if (serverButtons) {
             // Merge serverButtons into BUTTONS, keeping nested keys intact by performing a deep merge
             buttons = mergeConfig(buttons || {}, serverButtons);
+            // Save a snapshot so handleRules can respect explicit server-side false values
+            configButtons = JSON.parse(JSON.stringify(buttons));
             console.log('AXIOS ROOM BUTTONS SETTINGS', {
                 serverButtons: serverButtons,
                 clientButtons: buttons,
             });
+        }
+        if (response.data.gettwinAppUrl) {
+            gettwinAppUrl = response.data.gettwinAppUrl;
         }
     } catch (error) {
         console.error('AXIOS GET CONFIG ERROR', error.message);
@@ -1930,18 +1973,31 @@ async function whoAreYou() {
 
     window.localStorage.peer_name = await getUserName();
 
+    // Read optional meeting name passed as URL param
+    const meetingName = getQueryParam('meeting_name');
+    console.log('Direct join', { meeting_name: meetingName });
+
+    // Update browser tab title to show the actual meeting name
+    if (meetingName) {
+        const clientTitleEl = document.getElementById('clientTitle');
+        const brandTitle = brand.site?.clientTitle || brand.app?.name || 'Gettwin Meet';
+        const fullTitle = meetingName + ' - ' + brandTitle;
+        if (clientTitleEl) clientTitleEl.textContent = fullTitle;
+        document.title = fullTitle;
+    }
+
     Swal.fire({
         allowOutsideClick: false,
         allowEscapeKey: false,
         background: swBg,
-        title: brand.app?.name || 'MiroTalk P2P',
+        title: meetingName || brand.app?.name || 'MiroTalk P2P',
         position: 'center',
         input: 'text',
-        inputPlaceholder: 'Enter your email or name',
+        inputPlaceholder: t('Enter your email or name'),
         inputAttributes: { maxlength: 254, id: 'usernameInput' },
         inputValue: window.localStorage.peer_name ? window.localStorage.peer_name : '',
         html: initUser, // inject html
-        confirmButtonText: `Join meeting`,
+        confirmButtonText: t('Join meeting'),
         customClass: { popup: 'init-modal-size' },
         showClass: { popup: 'animate__animated animate__fadeInDown' },
         hideClass: { popup: 'animate__animated animate__fadeOutUp' },
@@ -1949,12 +2005,12 @@ async function whoAreYou() {
             elemDisplay(loadingDiv, false);
         },
         inputValidator: async (value) => {
-            if (!value) return 'Please enter your email or name';
+            if (!value) return t('Please enter your email or name');
 
             // Long email or name
             const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
             if ((isEmail && value.length > 254) || (!isEmail && value.length > 32)) {
-                return isEmail ? 'Email must be max 254 char' : 'Name must be max 32 char';
+                return isEmail ? t('Email must be max 254 char') : t('Name must be max 32 char');
             }
 
             // prevent xss execution itself
@@ -1963,12 +2019,12 @@ async function whoAreYou() {
             // prevent XSS injection to remote peer
             if (isHtml(myPeerName)) {
                 myPeerName = '';
-                return 'Invalid name!';
+                return t('Invalid name!');
             }
 
             // check if peer name is already in use in the room
             if (await checkUserName()) {
-                return 'Username is already in use!';
+                return t('Username is already in use!');
             } else {
                 // Hide username emoji
                 if (!usernameEmoji.classList.contains('hidden')) {
@@ -1980,6 +2036,11 @@ async function whoAreYou() {
         },
     }).then(() => {
         playSound('addPeer');
+        // Re-apply meeting name as tab title after dialog closes (brand.js async fetch may have overwritten it)
+        if (meetingName) {
+            const brandTitle = brand.site?.clientTitle || brand.app?.name || 'Gettwin Meet';
+            document.title = meetingName + ' - ' + brandTitle;
+        }
     });
 
     // Show initUser injected into Swal html
@@ -2057,10 +2118,10 @@ function userNameAlreadyInRoom() {
         background: swBg,
         imageUrl: images.forbidden,
         position: 'center',
-        title: 'Username',
+        title: t('Username'),
         html: `The Username is already in use. <br/> Please try with another one`,
         showDenyButton: false,
-        confirmButtonText: `OK`,
+        confirmButtonText: t('OK'),
         showClass: { popup: 'animate__animated animate__fadeInDown' },
         hideClass: { popup: 'animate__animated animate__fadeOutUp' },
     }).then((result) => {
@@ -4356,10 +4417,10 @@ function checkShareScreen() {
             background: swBg,
             position: 'center',
             icon: 'question',
-            text: 'Do you want to share your screen?',
+            text: t('Do you want to share your screen?'),
             showDenyButton: true,
-            confirmButtonText: `Yes`,
-            denyButtonText: `No`,
+            confirmButtonText: t('Yes'),
+            denyButtonText: t('No'),
             showClass: { popup: 'animate__animated animate__fadeInDown' },
             hideClass: { popup: 'animate__animated animate__fadeOutUp' },
         }).then((result) => {
@@ -4960,7 +5021,7 @@ function createDropdownItem(btnEl, label, dropdownContent, color) {
     item.className = 'navbar-dropdown-item';
     item.appendChild(btnEl);
     const span = document.createElement('span');
-    span.textContent = label;
+    span.textContent = (typeof t === 'function') ? t(label) : label;
     item.appendChild(span);
     if (color) {
         btnEl.style.setProperty('color', color, 'important');
@@ -6254,6 +6315,15 @@ function setChatRoomBtn() {
     msgerCPCloseBtn.addEventListener('click', () => {
         syncParticipantsPanelVisibility(false);
     });
+
+    // invite button in participants panel (floating msgerCP panel)
+    if (msgerCPInviteBtn) {
+        msgerCPInviteBtn.addEventListener('click', () => shareRoomMeetingURL());
+    }
+    // invite button in sidebar participants panel
+    if (msgerSidebarInviteBtn) {
+        msgerSidebarInviteBtn.addEventListener('click', () => shareRoomMeetingURL());
+    }
 
     // clean chat messages
     msgerClean.addEventListener('click', (e) => {
@@ -8223,43 +8293,55 @@ async function shareRoomUrl() {
 }
 
 /**
- * Share meeting room
- * @param {boolean} checkScreen check screen share
+ * Get the wildcard invite URL (via app.gettwin.io bridge if configured, else direct MiroTalk URL)
  */
-function shareRoomMeetingURL(checkScreen = false) {
+function getInviteUrl() {
+    if (gettwinAppUrl) {
+        return gettwinAppUrl + '/en/meeting/' + roomId + '/join';
+    }
+    return myRoomUrl;
+}
+
+/**
+ * Show invite dialog with a copyable wildcard join link
+ */
+function shareRoomMeetingURL() {
     playSound('newMessage');
-    const roomURL = getRoomURL();
+    const inviteUrl = getInviteUrl();
     Swal.fire({
         background: swBg,
         position: 'center',
-        title: 'Share the room',
+        title: t('Invite to meeting'),
         html: `
-        <div id="qrRoomContainer">
-            <canvas id="qrRoom"></canvas>
-        </div>
-        <br/>
-        <p style="color:rgb(8, 189, 89);">Join from your mobile device</p>
-        <p style="background:transparent; color:white; font-family: Arial, Helvetica, sans-serif;">No need for apps, simply capture the QR code with your mobile camera Or Invite someone else to join by sending them the following URL</p>
-        <p style="color:rgb(8, 189, 89);">${roomURL}</p>`,
-        showDenyButton: true,
+        <p style="background:transparent; color:white; font-family: Arial, Helvetica, sans-serif; margin-bottom: 12px;">
+            ${t('Share this link to invite someone to join:')}
+        </p>
+        <p style="color:rgb(8, 189, 89); word-break:break-all; font-size: 0.9em;">${inviteUrl}</p>`,
+        confirmButtonText: t('Copy link'),
         showCancelButton: true,
         cancelButtonColor: 'red',
-        denyButtonColor: 'green',
-        confirmButtonText: `Copy URL`,
-        denyButtonText: `Email invite`,
-        cancelButtonText: `Close`,
+        cancelButtonText: t('Close'),
         showClass: { popup: 'animate__animated animate__fadeInDown' },
         hideClass: { popup: 'animate__animated animate__fadeOutUp' },
     }).then((result) => {
         if (result.isConfirmed) {
-            copyRoomURL();
-        } else if (result.isDenied) {
-            shareRoomByEmail();
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(inviteUrl).catch(() => fallbackCopy(inviteUrl));
+            } else {
+                fallbackCopy(inviteUrl);
+            }
+            userLog('toast', t('Invite link copied!'));
         }
-        // share screen on join room
-        if (checkScreen) checkShareScreen();
     });
-    makeRoomQR();
+}
+
+function fallbackCopy(text) {
+    const tmp = document.createElement('input');
+    document.body.appendChild(tmp);
+    tmp.value = text;
+    tmp.select();
+    document.execCommand('copy');
+    document.body.removeChild(tmp);
 }
 
 /**
@@ -8315,10 +8397,11 @@ function shareRoomByEmail() {
         background: swBg,
         imageUrl: images.message,
         position: 'center',
-        title: 'Select a Date and Time',
+        title: t('Select a Date and Time'),
         html: '<input type="text" id="datetimePicker" class="flatpickr" />',
         showCancelButton: true,
-        confirmButtonText: 'OK',
+        confirmButtonText: t('OK'),
+        cancelButtonText: t('Cancel'),
         cancelButtonColor: 'red',
         showClass: { popup: 'animate__animated animate__fadeInDown' },
         hideClass: { popup: 'animate__animated animate__fadeOutUp' },
@@ -9248,15 +9331,15 @@ function recordingOptions(options, audioMixerTracks) {
         background: swBg,
         position: 'top',
         imageUrl: images.recording,
-        title: 'Recording options',
-        text: 'Select the recording type you want to start. Audio will be recorded from all participants.',
+        title: t('Recording options'),
+        text: t('Select the recording type you want to start. Audio will be recorded from all participants.'),
         showDenyButton: true,
         showCancelButton: true,
         cancelButtonColor: 'red',
         denyButtonColor: 'green',
-        confirmButtonText: `Camera`,
-        denyButtonText: `Screen/Window`,
-        cancelButtonText: `Cancel`,
+        confirmButtonText: t('Camera'),
+        denyButtonText: t('Screen/Window'),
+        cancelButtonText: t('Cancel'),
         showClass: { popup: 'animate__animated animate__fadeInDown' },
         hideClass: { popup: 'animate__animated animate__fadeOutUp' },
     }).then((result) => {
@@ -10116,12 +10199,12 @@ function cleanMessages() {
     Swal.fire({
         background: swBg,
         position: 'top',
-        title: 'Chat',
-        text: 'Clean up chat messages?',
+        title: t('Chat'),
+        text: t('Clean up chat messages?'),
         imageUrl: images.delete,
         showDenyButton: true,
-        confirmButtonText: `Yes`,
-        denyButtonText: `No`,
+        confirmButtonText: t('Yes'),
+        denyButtonText: t('No'),
         showClass: { popup: 'animate__animated animate__fadeInDown' },
         hideClass: { popup: 'animate__animated animate__fadeOutUp' },
     }).then((result) => {
@@ -10149,11 +10232,11 @@ function cleanCaptions() {
     Swal.fire({
         background: swBg,
         position: 'top',
-        title: 'Clean up all caption transcripts?',
+        title: t('Clean up all caption transcripts?'),
         imageUrl: images.delete,
         showDenyButton: true,
-        confirmButtonText: `Yes`,
-        denyButtonText: `No`,
+        confirmButtonText: t('Yes'),
+        denyButtonText: t('No'),
         showClass: { popup: 'animate__animated animate__fadeInDown' },
         hideClass: { popup: 'animate__animated animate__fadeOutUp' },
     }).then((result) => {
@@ -10579,27 +10662,27 @@ function isConversationCurrentlyVisible(type = 'public', peerName = '', peerId =
 function getConversationMeta() {
     if (activeConversation.type === 'private' && activeConversation.peerId === CHAT_GPT_PEER_ID) {
         return {
-            label: 'AI assistant',
+            label: t('AI assistant'),
             title: CHAT_GPT_NAME,
-            meta: `Direct messages with ${CHAT_GPT_NAME}.`,
-            placeholder: `Ask ${CHAT_GPT_NAME}...`,
+            meta: `${t('Direct messages with')} ${CHAT_GPT_NAME}.`,
+            placeholder: `${t('Ask')} ${CHAT_GPT_NAME}...`,
         };
     }
 
     if (activeConversation.type === 'private' && activeConversation.peerName) {
         return {
-            label: 'Private chat',
+            label: t('Private chat'),
             title: activeConversation.peerName,
-            meta: `Direct messages with ${activeConversation.peerName}.`,
-            placeholder: `Message ${activeConversation.peerName}...`,
+            meta: `${t('Direct messages with')} ${activeConversation.peerName}.`,
+            placeholder: `${t('Message')} ${activeConversation.peerName}...`,
         };
     }
 
     return {
-        label: 'Current view',
-        title: 'All messages',
-        meta: 'Public messages appear here.',
-        placeholder: 'Write a message...',
+        label: t('Current view'),
+        title: t('All messages'),
+        meta: t('Public messages appear here.'),
+        placeholder: t('Write a message...'),
     };
 }
 
@@ -10855,12 +10938,12 @@ function deleteMessage(id) {
     Swal.fire({
         background: swBg,
         position: 'top',
-        title: 'Chat',
-        text: 'Delete this messages?',
+        title: t('Chat'),
+        text: t('Delete this messages?'),
         imageUrl: images.delete,
         showDenyButton: true,
-        confirmButtonText: `Yes`,
-        denyButtonText: `No`,
+        confirmButtonText: t('Yes'),
+        denyButtonText: t('No'),
         showClass: { popup: 'animate__animated animate__fadeInDown' },
         hideClass: { popup: 'animate__animated animate__fadeOutUp' },
     }).then((result) => {
@@ -11009,12 +11092,11 @@ function getMsgerParticipantDropdownDividerMarkup() {
 
 function getMsgerRoomActionsDropdownMarkup(idSuffix = '') {
     return `
-        ${getMsgerParticipantDropdownActionMarkup(`captionEveryoneBtn${idSuffix}`, 'fas fa-play', 'Start captions')}
-        ${getMsgerParticipantDropdownActionMarkup(`captionEveryoneStopBtn${idSuffix}`, 'fas fa-stop', 'Stop captions')}
-        ${getMsgerParticipantDropdownDividerMarkup()}
-        ${getMsgerParticipantDropdownActionMarkup(`muteEveryoneBtn${idSuffix}`, 'fas fa-microphone', 'Mute everyone', 'danger')}
-        ${getMsgerParticipantDropdownActionMarkup(`hideEveryoneBtn${idSuffix}`, 'fas fa-video', 'Hide everyone', 'danger')}
-        ${getMsgerParticipantDropdownActionMarkup(`ejectEveryoneBtn${idSuffix}`, 'fas fa-right-from-bracket', 'Eject everyone', 'danger')}
+        ${buttons.settings.showCaptionEveryoneBtn ? getMsgerParticipantDropdownActionMarkup(`captionEveryoneBtn${idSuffix}`, 'fas fa-play', t('Start captions')) : ''}
+        ${buttons.settings.showCaptionEveryoneBtn ? getMsgerParticipantDropdownActionMarkup(`captionEveryoneStopBtn${idSuffix}`, 'fas fa-stop', t('Stop captions')) : ''}
+        ${buttons.settings.showMuteEveryoneBtn ? getMsgerParticipantDropdownActionMarkup(`muteEveryoneBtn${idSuffix}`, 'fas fa-microphone', t('Mute everyone'), 'danger') : ''}
+        ${buttons.settings.showHideEveryoneBtn ? getMsgerParticipantDropdownActionMarkup(`hideEveryoneBtn${idSuffix}`, 'fas fa-video', t('Hide everyone'), 'danger') : ''}
+        ${buttons.settings.showEjectEveryoneBtn ? getMsgerParticipantDropdownActionMarkup(`ejectEveryoneBtn${idSuffix}`, 'fas fa-right-from-bracket', t('Eject everyone'), 'danger') : ''}
     `;
 }
 
@@ -11058,26 +11140,26 @@ async function msgerAddPeers(peers) {
                         ${getMsgerParticipantDropdownActionMarkup(`${peer_id}_pToggleAudio`, 'fas fa-microphone', 'Mute microphone', 'danger')}
                         ${getMsgerParticipantDropdownActionMarkup(`${peer_id}_pToggleVideo`, 'fas fa-video', 'Stop video', 'danger')}
                         ${getMsgerParticipantDropdownActionMarkup(`${peer_id}_pToggleScreen`, 'fas fa-desktop', 'Stop screen', 'danger')}
-                        ${getMsgerParticipantDropdownActionMarkup(`${peer_id}_pSelectFile`, 'fas fa-upload', 'Send file')}
-                        ${getMsgerParticipantDropdownActionMarkup(`${peer_id}_pSendVideoUrl`, 'fab fa-youtube', 'Share video or audio')}
-                        ${getMsgerParticipantDropdownActionMarkup(`${peer_id}_pRequestGeo`, 'fas fa-location-dot', 'Request geolocation')}
+                        ${buttons.remote.showFileShareBtn ? getMsgerParticipantDropdownActionMarkup(`${peer_id}_pSelectFile`, 'fas fa-upload', 'Send file') : ''}
+                        ${buttons.remote.showShareVideoAudioBtn ? getMsgerParticipantDropdownActionMarkup(`${peer_id}_pSendVideoUrl`, 'fab fa-youtube', 'Share video or audio') : ''}
+                        ${buttons.remote.showGeoLocationBtn ? getMsgerParticipantDropdownActionMarkup(`${peer_id}_pRequestGeo`, 'fas fa-location-dot', 'Request geolocation') : ''}
                     `;
                 } else {
                     elemDisplay(msgerCPDropDownMenuBtn, false);
                     elemDisplay(msgerSidebarDropDownMenuBtn, false);
                     dropdownOptions = `
-                        ${getMsgerParticipantDropdownActionMarkup(`${peer_id}_pSelectFile`, 'fas fa-upload', 'Send file')}
-                        ${getMsgerParticipantDropdownActionMarkup(`${peer_id}_pSendVideoUrl`, 'fab fa-youtube', 'Share video or audio')}
+                        ${buttons.remote.showFileShareBtn ? getMsgerParticipantDropdownActionMarkup(`${peer_id}_pSelectFile`, 'fas fa-upload', 'Send file') : ''}
+                        ${buttons.remote.showShareVideoAudioBtn ? getMsgerParticipantDropdownActionMarkup(`${peer_id}_pSendVideoUrl`, 'fab fa-youtube', 'Share video or audio') : ''}
                     `;
                 }
 
                 const msgerPrivateDiv = `
                 <div id="${peer_id}_pMsgDiv" class="msger-private-chat-entry" data-peer-name="${peer_name.toLowerCase()}">
-                    <div id="${peer_id}_pMsgBtn" class="msger-chat-item" role="button" tabindex="0" data-value="${peer_name}" data-peer-id="${peer_id}" title="${peer_name}">
+                    <div id="${peer_id}_pMsgBtn" class="msger-chat-item${!buttons.remote.showPrivateMessageBtn ? ' no-pointer' : ''}" role="button" tabindex="0" data-value="${peer_name}" data-peer-id="${peer_id}" title="${peer_name}">
                         <img id="${peer_id}_pMsgAvatar" class="msger-chat-avatar" src="${chatAvatar}" alt="${peer_name}" />
                         <span class="msger-chat-item-copy">
                             <strong>${peer_name}</strong>
-                            <small>Open private conversation</small>
+                            ${buttons.remote.showPrivateMessageBtn ? `<small>${typeof t === 'function' ? t('Open private conversation') : 'Open private conversation'}</small>` : ''}
                         </span>
                         <span id="${peer_id}_pMsgBadge" class="msger-chat-unread-badge hidden">0</span>
                         <div id="${peer_id}_pDropdownMenu" class="dropdown-menu-custom msger-participant-dropdown">
@@ -11218,6 +11300,7 @@ function addMsgerPrivateBtn(
     msgerPrivateBtn.addEventListener('click', (e) => {
         e.preventDefault();
         if (e.target.closest('.dropdown-menu-custom')) return;
+        if (!buttons.remote.showPrivateMessageBtn) return;
         if (msgerPrivateMsgInput) {
             sendPrivateMessage();
             return;
@@ -11934,7 +12017,7 @@ function setMyAudioStatus(status) {
     myAudioStatusIcon.className = audioClassName;
     // send my audio status to all peers in the room
     emitPeerStatus('audio', status);
-    const audioStatusLabel = status ? 'My audio is on' : 'My audio is off';
+    const audioStatusLabel = status ? t('My audio is on') : t('My audio is off');
     setTippy(myAudioStatusIcon, audioStatusLabel, 'bottom');
     setTippy(audioBtn, status ? 'Stop the audio' : 'Start the audio', bottomButtonsPlacement);
     status ? playSound('on') : playSound('off');
@@ -12617,14 +12700,14 @@ function disableAllPeers(element) {
         background: swBg,
         position: 'top',
         imageUrl: element == 'audio' ? images.audioOff : images.videoOff,
-        title: element == 'audio' ? 'Mute everyone except yourself?' : 'Hide everyone except yourself?',
+        title: element == 'audio' ? t('Mute everyone except yourself?') : t('Hide everyone except yourself?'),
         text:
             element == 'audio'
-                ? "Once muted, you won't be able to unmute them, but they can unmute themselves at any time."
-                : "Once hided, you won't be able to unhide them, but they can unhide themselves at any time.",
+                ? t("Once muted, you won't be able to unmute them, but they can unmute themselves at any time.")
+                : t("Once hided, you won't be able to unhide them, but they can unhide themselves at any time."),
         showDenyButton: true,
-        confirmButtonText: element == 'audio' ? `Mute` : `Hide`,
-        denyButtonText: `Cancel`,
+        confirmButtonText: element == 'audio' ? t('Mute') : t('Hide'),
+        denyButtonText: t('Cancel'),
         showClass: { popup: 'animate__animated animate__fadeInDown' },
         hideClass: { popup: 'animate__animated animate__fadeOutUp' },
     }).then((result) => {
@@ -12656,11 +12739,11 @@ function ejectEveryone() {
         background: swBg,
         imageUrl: images.leave,
         position: 'center',
-        title: 'Eject everyone except yourself?',
-        text: 'Are you sure to want eject all participants from the room?',
+        title: t('Eject everyone except yourself?'),
+        text: t('Are you sure to want eject all participants from the room?'),
         showDenyButton: true,
-        confirmButtonText: `Yes`,
-        denyButtonText: `No`,
+        confirmButtonText: t('Yes'),
+        denyButtonText: t('No'),
         showClass: { popup: 'animate__animated animate__fadeInDown' },
         hideClass: { popup: 'animate__animated animate__fadeOutUp' },
     }).then((result) => {
@@ -12691,21 +12774,21 @@ function disablePeer(peer_id, element) {
     switch (element) {
         case 'audio':
             imageUrl = images.audioOff;
-            title = 'Mute this participant?';
-            text = "Once muted, you won't be able to unmute them, but they can unmute themselves at any time.";
-            confirmButtonText = 'Mute';
+            title = t('Mute this participant?');
+            text = t("Once muted, you won't be able to unmute them, but they can unmute themselves at any time.");
+            confirmButtonText = t('Mute');
             break;
         case 'video':
-            title = 'Hide this participant?';
+            title = t('Hide this participant?');
             imageUrl = images.videoOff;
-            text = "Once hided, you won't be able to unhide them, but they can unhide themselves at any time.";
-            confirmButtonText = 'Hide';
+            text = t("Once hided, you won't be able to unhide them, but they can unhide themselves at any time.");
+            confirmButtonText = t('Hide');
             break;
         case 'screen':
-            title = 'Stop screen sharing?';
+            title = t('Stop screen sharing?');
             imageUrl = images.screenOff;
-            text = "Once stopped, you wan't be able to start then, but they can start screen themselves at any time.";
-            confirmButtonText = 'Stop';
+            text = t("Once stopped, you wan't be able to start then, but they can start screen themselves at any time.");
+            confirmButtonText = t('Stop');
             break;
         default:
             break;
@@ -12719,7 +12802,7 @@ function disablePeer(peer_id, element) {
         text: text,
         showDenyButton: true,
         confirmButtonText: confirmButtonText,
-        denyButtonText: `Cancel`,
+        denyButtonText: t('Cancel'),
         showClass: { popup: 'animate__animated animate__fadeInDown' },
         hideClass: { popup: 'animate__animated animate__fadeOutUp' },
     }).then((result) => {
@@ -12771,13 +12854,13 @@ function handleRoomAction(config, emit = false) {
                     background: swBg,
                     imageUrl: images.locked,
                     input: 'text',
-                    inputPlaceholder: 'Set Room password',
-                    confirmButtonText: `OK`,
-                    denyButtonText: `Cancel`,
+                    inputPlaceholder: t('Set Room password'),
+                    confirmButtonText: t('OK'),
+                    denyButtonText: t('Cancel'),
                     showClass: { popup: 'animate__animated animate__fadeInDown' },
                     hideClass: { popup: 'animate__animated animate__fadeOutUp' },
                     inputValidator: (pwd) => {
-                        if (!pwd) return 'Please enter the Room password';
+                        if (!pwd) return t('Please enter the Room password');
                         thisRoomPassword = pwd;
                     },
                 }).then((result) => {
@@ -12845,10 +12928,10 @@ function handleRoomLocked() {
         background: swBg,
         position: 'center',
         imageUrl: images.locked,
-        title: 'Oops, Wrong Room Password',
-        text: 'The room is locked, try with another one.',
+        title: t('Oops, Wrong Room Password'),
+        text: t('The room is locked, try with another one.'),
         showDenyButton: false,
-        confirmButtonText: `Ok`,
+        confirmButtonText: t('Ok'),
         showClass: { popup: 'animate__animated animate__fadeInDown' },
         hideClass: { popup: 'animate__animated animate__fadeOutUp' },
     }).then((result) => {
@@ -12867,14 +12950,14 @@ function handleUnlockTheRoom() {
         allowEscapeKey: false,
         background: swBg,
         imageUrl: images.locked,
-        title: 'Oops, Room is Locked',
+        title: t('Oops, Room is Locked'),
         input: 'text',
-        inputPlaceholder: 'Enter the Room password',
-        confirmButtonText: `OK`,
+        inputPlaceholder: t('Enter the Room password'),
+        confirmButtonText: t('OK'),
         showClass: { popup: 'animate__animated animate__fadeInDown' },
         hideClass: { popup: 'animate__animated animate__fadeOutUp' },
         inputValidator: (pwd) => {
-            if (!pwd) return 'Please enter the Room password';
+            if (!pwd) return t('Please enter the Room password');
             thisRoomPassword = pwd;
         },
     }).then(() => {
@@ -13189,10 +13272,11 @@ function whiteboardAddObj(type) {
         case 'imgUrl':
             Swal.fire({
                 background: swBg,
-                title: 'Image URL',
+                title: t('Image URL'),
                 input: 'text',
                 showCancelButton: true,
-                confirmButtonText: 'OK',
+                confirmButtonText: t('OK'),
+                cancelButtonText: t('Cancel'),
                 showClass: { popup: 'animate__animated animate__fadeInDown' },
                 hideClass: { popup: 'animate__animated animate__fadeOutUp' },
             }).then((result) => {
@@ -13369,7 +13453,7 @@ function wbHandleVanishingObjects() {
 function createStickyNote() {
     Swal.fire({
         background: swBg,
-        title: 'Create Sticky Note',
+        title: t('Create Sticky Note'),
         html: `
         <div class="sticky-note-form">
             <textarea id="stickyNoteText" class="sticky-note-textarea" rows="4" placeholder="Type your note here...">Note</textarea>
@@ -13390,8 +13474,8 @@ function createStickyNote() {
         </div>
         `,
         showCancelButton: true,
-        confirmButtonText: 'Create',
-        cancelButtonText: 'Cancel',
+        confirmButtonText: t('Create'),
+        cancelButtonText: t('Cancel'),
         showClass: { popup: 'animate__animated animate__fadeInDown' },
         hideClass: { popup: 'animate__animated animate__fadeOutUp' },
         preConfirm: () => {
@@ -13501,8 +13585,8 @@ function setupFileSelection(title, accept, renderToCanvas) {
             dropArea.addEventListener('drop', handleDrop);
         },
         showDenyButton: true,
-        confirmButtonText: `OK`,
-        denyButtonText: `Cancel`,
+        confirmButtonText: t('OK'),
+        denyButtonText: t('Cancel'),
         showClass: { popup: 'animate__animated animate__fadeInDown' },
         hideClass: { popup: 'animate__animated animate__fadeOutUp' },
     }).then((result) => {
@@ -13888,11 +13972,11 @@ function confirmCleanBoard() {
         background: swBg,
         imageUrl: images.delete,
         position: 'top',
-        title: 'Clean the board',
-        text: 'Are you sure you want to clean the board?',
+        title: t('Clean the board'),
+        text: t('Are you sure you want to clean the board?'),
         showDenyButton: true,
-        confirmButtonText: `Yes`,
-        denyButtonText: `No`,
+        confirmButtonText: t('Yes'),
+        denyButtonText: t('No'),
         showClass: { popup: 'animate__animated animate__fadeInDown' },
         hideClass: { popup: 'animate__animated animate__fadeOutUp' },
     }).then((result) => {
@@ -13989,9 +14073,9 @@ function showWhiteboardShortcuts() {
     Swal.fire({
         background: swBg,
         position: 'center',
-        title: 'Whiteboard Shortcuts',
+        title: t('Whiteboard Shortcuts'),
         html: whiteboardShortcutsContent.innerHTML,
-        confirmButtonText: 'Got it!',
+        confirmButtonText: t('Got it!'),
         showClass: { popup: 'animate__animated animate__fadeInDown' },
         hideClass: { popup: 'animate__animated animate__fadeOutUp' },
     });
@@ -14358,7 +14442,7 @@ function selectFileToShare(peer_id, broadcast = false, peerName = '') {
         imageAlt: 'mirotalk-file-sharing',
         imageUrl: images.share,
         position: 'center',
-        title: `Share file${targetLabel}`,
+        title: t('Share file') + targetLabel,
         input: 'file',
         html: `
         <div id="dropArea">
@@ -14377,8 +14461,8 @@ function selectFileToShare(peer_id, broadcast = false, peerName = '') {
             dropArea.addEventListener('drop', handleDrop);
         },
         showDenyButton: true,
-        confirmButtonText: `Send`,
-        denyButtonText: `Cancel`,
+        confirmButtonText: t('Send'),
+        denyButtonText: t('Cancel'),
         showClass: { popup: 'animate__animated animate__fadeInDown' },
         hideClass: { popup: 'animate__animated animate__fadeOutUp' },
     }).then((result) => {
@@ -14565,13 +14649,13 @@ function endDownload() {
                 allowOutsideClick: false,
                 background: swBg,
                 position: 'center',
-                title: 'Received file',
+                title: t('Received file'),
                 text: incomingFileInfo.file.fileName + ' size ' + bytesToSize(incomingFileInfo.file.fileSize),
                 imageUrl: e.target.result,
                 imageAlt: 'mirotalk-file-img-download',
                 showDenyButton: true,
-                confirmButtonText: `Save`,
-                denyButtonText: `Cancel`,
+                confirmButtonText: t('Save'),
+                denyButtonText: t('Cancel'),
                 showClass: { popup: 'animate__animated animate__fadeInDown' },
                 hideClass: { popup: 'animate__animated animate__fadeOutUp' },
             }).then((result) => {
@@ -14588,11 +14672,11 @@ function endDownload() {
             imageAlt: 'mirotalk-file-download',
             imageUrl: images.share,
             position: 'center',
-            title: 'Received file',
+            title: t('Received file'),
             text: incomingFileInfo.file.fileName + ' size ' + bytesToSize(incomingFileInfo.file.fileSize),
             showDenyButton: true,
-            confirmButtonText: `Save`,
-            denyButtonText: `Cancel`,
+            confirmButtonText: t('Save'),
+            denyButtonText: t('Cancel'),
             showClass: { popup: 'animate__animated animate__fadeInDown' },
             hideClass: { popup: 'animate__animated animate__fadeOutUp' },
         }).then((result) => {
@@ -14635,11 +14719,12 @@ function sendVideoUrl(peer_id = null, peer_name = '', broadcast = !peer_id) {
         background: swBg,
         position: 'center',
         imageUrl: images.vaShare,
-        title: `Share a Video or Audio${targetLabel}`,
-        text: `Paste a Video or audio URL${targetLabel}`,
+        title: t('Share a Video or Audio') + targetLabel,
+        text: t('Paste a Video or audio URL') + targetLabel,
         input: 'text',
         showCancelButton: true,
-        confirmButtonText: `Share`,
+        confirmButtonText: t('Share'),
+        cancelButtonText: t('Cancel'),
         showClass: { popup: 'animate__animated animate__fadeInDown' },
         hideClass: { popup: 'animate__animated animate__fadeOutUp' },
     }).then((result) => {
@@ -14862,11 +14947,11 @@ function kickOut(peer_id) {
         background: swBg,
         position: 'top',
         imageUrl: images.leave,
-        title: 'Kick out',
-        text: `Are you sure you want to kick out ${pName}?`,
+        title: t('Kick out'),
+        text: t('Are you sure you want to kick out') + ' ' + pName + '?',
         showDenyButton: true,
-        confirmButtonText: `Yes`,
-        denyButtonText: `No`,
+        confirmButtonText: t('Yes'),
+        denyButtonText: t('No'),
         showClass: { popup: 'animate__animated animate__fadeInDown' },
         hideClass: { popup: 'animate__animated animate__fadeOutUp' },
     }).then((result) => {
@@ -14907,10 +14992,10 @@ function handleCaptionActions(config) {
                 showDenyButton: true,
                 background: swBg,
                 imageUrl: images.caption,
-                title: 'Start Captions',
-                text: `${peer_name} wants to start the captions for this session. Would you like to enable them?`,
-                confirmButtonText: `Yes`,
-                denyButtonText: `No`,
+                title: t('Start Captions'),
+                text: peer_name + ' ' + t('wants to start the captions for this session. Would you like to enable them?'),
+                confirmButtonText: t('Yes'),
+                denyButtonText: t('No'),
                 showClass: { popup: 'animate__animated animate__fadeInDown' },
                 hideClass: { popup: 'animate__animated animate__fadeOutUp' },
             }).then((result) => {
@@ -14964,7 +15049,7 @@ function handleKickedOut(config) {
         background: swBg,
         position: 'center',
         imageUrl: images.leave,
-        title: 'Kicked out!',
+        title: t('Kicked out!'),
         html:
             `<h2 style="color: #FF2D00;">` +
             `User ` +
@@ -15086,11 +15171,11 @@ function leaveFeedback() {
         background: swBg,
         imageUrl: images.feedback,
         position: 'top',
-        title: 'Leave a feedback',
-        text: 'Do you want to rate your MiroTalk experience?',
-        confirmButtonText: `Yes`,
-        denyButtonText: `No`,
-        cancelButtonText: `Cancel`,
+        title: t('Leave a feedback'),
+        text: t('Do you want to rate your MiroTalk experience?'),
+        confirmButtonText: t('Yes'),
+        denyButtonText: t('No'),
+        cancelButtonText: t('Cancel'),
         showClass: { popup: 'animate__animated animate__fadeInDown' },
         hideClass: { popup: 'animate__animated animate__fadeOutUp' },
     }).then((result) => {
@@ -15313,7 +15398,7 @@ function userLog(type, message, timer = 3000) {
                 background: swBg,
                 position: 'center',
                 icon: 'success',
-                title: 'Success',
+                title: t('Success'),
                 html: message,
                 showClass: { popup: 'animate__animated animate__fadeInDown' },
                 hideClass: { popup: 'animate__animated animate__fadeOutUp' },
@@ -15757,8 +15842,8 @@ function setupQuickDeviceSwitchDropdowns() {
         if (!videoMenu) return;
         videoMenu.innerHTML = '';
 
-        appendMenuHeader(videoMenu, 'fas fa-video', 'Cameras');
-        appendSelectOptions(videoMenu, videoSelect, 'No cameras found', rebuildVideoMenu);
+        appendMenuHeader(videoMenu, 'fas fa-video', t('Cameras'));
+        appendSelectOptions(videoMenu, videoSelect, t('No cameras found'), rebuildVideoMenu);
 
         // Add settings button
         appendMenuDivider(videoMenu);
@@ -15768,7 +15853,7 @@ function setupQuickDeviceSwitchDropdowns() {
         const settingsIcon = document.createElement('i');
         settingsIcon.className = 'fas fa-cog';
         settingsBtn.appendChild(settingsIcon);
-        settingsBtn.appendChild(document.createTextNode(' Open Video Settings'));
+        settingsBtn.appendChild(document.createTextNode(' ' + t('Open Video Settings')));
         settingsBtn.addEventListener('click', () => {
             hideShowMySettings();
             // Simulate tab click to open video devices tab
@@ -15783,22 +15868,22 @@ function setupQuickDeviceSwitchDropdowns() {
         if (!audioMenu) return;
         audioMenu.innerHTML = '';
 
-        appendMenuHeader(audioMenu, 'fas fa-microphone', 'Microphones');
-        appendSelectOptions(audioMenu, audioInputSelect, 'No microphones found', rebuildAudioMenu);
+        appendMenuHeader(audioMenu, 'fas fa-microphone', t('Microphones'));
+        appendSelectOptions(audioMenu, audioInputSelect, t('No microphones found'), rebuildAudioMenu);
 
         appendMenuDivider(audioMenu);
 
-        appendMenuHeader(audioMenu, 'fas fa-volume-high', 'Speakers');
+        appendMenuHeader(audioMenu, 'fas fa-volume-high', t('Speakers'));
         if (!audioOutputSelect || audioOutputSelect.disabled) {
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.className = 'app-dropdown-action';
             btn.disabled = true;
-            btn.textContent = 'Speaker selection not supported';
+            btn.textContent = t('Speaker selection not supported');
             audioMenu.appendChild(btn);
             return;
         }
-        appendSelectOptions(audioMenu, audioOutputSelect, 'No speakers found', rebuildAudioMenu);
+        appendSelectOptions(audioMenu, audioOutputSelect, t('No speakers found'), rebuildAudioMenu);
 
         // Add action buttons
         appendMenuDivider(audioMenu);
@@ -15810,7 +15895,7 @@ function setupQuickDeviceSwitchDropdowns() {
         const testIcon = document.createElement('i');
         testIcon.className = 'fa-solid fa-circle-play';
         testBtn.appendChild(testIcon);
-        testBtn.appendChild(document.createTextNode(' Test Speaker'));
+        testBtn.appendChild(document.createTextNode(' ' + t('Test Speaker')));
         testBtn.addEventListener('click', () => playSpeaker(audioOutputSelect?.value, 'ring'));
         audioMenu.appendChild(testBtn);
 
@@ -15821,7 +15906,7 @@ function setupQuickDeviceSwitchDropdowns() {
         const settingsIcon = document.createElement('i');
         settingsIcon.className = 'fas fa-cog';
         settingsBtn.appendChild(settingsIcon);
-        settingsBtn.appendChild(document.createTextNode(' Open Audio Settings'));
+        settingsBtn.appendChild(document.createTextNode(' ' + t('Open Audio Settings')));
         settingsBtn.addEventListener('click', () => {
             hideShowMySettings();
             // Simulate tab click to open audio devices tab

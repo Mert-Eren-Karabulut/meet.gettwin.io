@@ -263,7 +263,12 @@ function handleBrand() {
     if (privacyPolicyTitle && brand.site?.privacyPolicyTitle)
         privacyPolicyTitle.textContent = brand.site.privacyPolicyTitle;
     if (stunTurnTitle && brand.site?.stunTurnTitle) stunTurnTitle.textContent = brand.site.stunTurnTitle;
-    if (clientTitle && brand.site?.clientTitle) clientTitle.textContent = brand.site.clientTitle;
+    const _meetingNameParam = new URLSearchParams(window.location.search).get('meeting_name');
+    if (clientTitle && brand.site?.clientTitle) {
+        clientTitle.textContent = _meetingNameParam
+            ? _meetingNameParam + ' - ' + brand.site.clientTitle
+            : brand.site.clientTitle;
+    }
     if (notFoundTitle && brand.site?.notFoundTitle) notFoundTitle.textContent = brand.site.notFoundTitle;
     if (waitingRoomTitle && brand.site?.waitingRoomTitle) waitingRoomTitle.textContent = brand.site.waitingRoomTitle;
     if (waitingRoomHeading && brand.site?.waitingRoomHeading)

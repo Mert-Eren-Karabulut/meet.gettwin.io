@@ -284,6 +284,29 @@ const ipWhitelist = config.ipWhitelist;
 // OIDC - Open ID Connect
 const OIDC = config.oidc;
 
+// Middleware: require a valid admin JWT (signed by app.gettwin.io with role:'admin' in payload)
+function requireAdminToken(req, res, next) {
+    const token = req.query.token;
+    if (!token) {
+        return res.status(401).send('Unauthorized: admin token required');
+    }
+    try {
+        const decoded = jwt.verify(token, jwtCfg.JWT_KEY);
+        if (!decoded || !decoded.data) return res.status(401).send('Unauthorized: invalid token structure');
+
+        const decrypted = CryptoJS.AES.decrypt(decoded.data, jwtCfg.JWT_KEY).toString(CryptoJS.enc.Utf8);
+        const payload = JSON.parse(decrypted);
+
+        if (payload.role !== 'admin') {
+            return res.status(403).send('Forbidden: admin access only');
+        }
+        return next();
+    } catch (err) {
+        log.warn('requireAdminToken failed', err.message);
+        return res.status(401).send('Unauthorized: invalid or expired token');
+    }
+}
+
 // Custom middleware function for OIDC authentication
 function OIDCAuth(req, res, next) {
     if (OIDC.enabled) {
@@ -388,6 +411,13 @@ function getPeerCount(roomId) {
 
 app.set('trust proxy', trustProxy); // Enables trust for proxy headers (e.g., X-Forwarded-For) based on the trustProxy setting
 app.use(helmet.noSniff()); // Enable content type sniffing prevention
+
+// Allow iframe embedding from GetTwin domains and grant WebRTC permissions
+app.use((req, res, next) => {
+    res.setHeader('Permissions-Policy', 'camera=*, microphone=*, display-capture=*');
+    res.removeHeader('X-Frame-Options');
+    next();
+});
 
 // Use all static files from the public folder
 const staticOptions = {
@@ -541,8 +571,8 @@ app.get('/newcall', OIDCAuth, (req, res) => {
     }
 });
 
-// Get Active rooms
-app.get('/activeRooms', OIDCAuth, (req, res) => {
+// Get Active rooms — admin only (token from app.gettwin.io with role:'admin')
+app.get('/activeRooms', requireAdminToken, (req, res) => {
     htmlInjector.injectHtml(views.activeRooms, res);
 });
 
@@ -780,7 +810,10 @@ app.post('/login', loginLimiter, (req, res) => {
 
 // UI buttons configuration
 app.get('/buttons', (req, res) => {
-    res.status(200).json({ message: config.buttons ? config.buttons : false });
+    res.status(200).json({
+        message: config.buttons ? config.buttons : false,
+        gettwinAppUrl: config.gettwinAppUrl || '',
+    });
 });
 
 // UI themes configuration

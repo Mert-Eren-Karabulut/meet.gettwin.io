@@ -3,7 +3,7 @@
     <head>
         <!-- Title and Icon -->
 
-        <title id="clientTitle">MiroTalk WebRTC Video call, Chat Room & Screen Sharing.</title>
+        <title id="clientTitle">GetTwin Meet</title>
         <link id="icon" rel="shortcut icon" href="../images/logo.svg" />
         <link id="appleTouchIcon" rel="apple-touch-icon" href="../images/logo.svg" />
 
@@ -368,6 +368,8 @@ access to use this app.
                                 <h3>Participants</h3>
                             </div>
                             <div class="msger-header-options msger-sidebar-header-options">
+                                <!-- Invite -->
+                                <button id="msgerSidebarInviteBtn" class="fas fa-user-plus" title="Invite"></button>
                                 <div class="dropdown-custom">
                                     <button
                                         class="dropdown-toggle-custom"
@@ -482,6 +484,8 @@ access to use this app.
                                 <h3>People here</h3>
                             </div>
                             <div class="msger-header-options">
+                                <!-- Invite -->
+                                <button id="msgerCPInviteBtn" class="fas fa-user-plus" title="Invite"></button>
                                 <!-- More options -->
                                 <div id="tabRoomParticipants" class="dropdown-custom">
                                     <button
@@ -696,7 +700,7 @@ access to use this app.
                         <br />
                         <br />
                         <table id="mySettingsTable">
-                            <tr>
+                            <tr id="volumeBarRow">
                                 <td class="w-80">
                                     <div class="title">
                                         <i class="fas fa-microphone-lines"></i>
@@ -705,7 +709,7 @@ access to use this app.
                                 </td>
                                 <td><input id="switchAudioPitchBar" class="toggle" type="checkbox" checked /></td>
                             </tr>
-                            <tr>
+                            <tr id="soundsRow">
                                 <td class="w-80">
                                     <div class="title">
                                         <i class="fas fa-music"></i>
@@ -752,7 +756,7 @@ access to use this app.
                             </tr>
                         </table>
                         <br />
-                        <table id="mySettingsTable">
+                        <table id="sessionTimerTable">
                             <tr>
                                 <td>
                                     <div class="title">
@@ -1244,10 +1248,13 @@ access to use this app.
                     <div id="tabLanguages" class="tabcontent">
                         <div class="title">
                             <i class="fa-solid fa-language"></i>
-                            <p>Language</p>
+                            <p data-i18n="Language">Language</p>
                         </div>
                         <br />
-                        <div id="google_translate_element"></div>
+                        <select id="languageSelect" onchange="setLanguage(this.value)">
+                            <option value="en">English</option>
+                            <option value="tr">Türkçe</option>
+                        </select>
                         <br />
                     </div>
                     <br />
@@ -1508,7 +1515,7 @@ access to use this app.
         <script defer src="../js/detectSpeaking.js"></script>
         <script defer src="../js/buttons.js"></script>
         <script defer src="../js/videoGrid.js"></script>
-        <script defer src="../js/translate.js"></script>
+        <script defer src="../js/i18n.js"></script>
         <script defer src="../js/fixWebmDuration.js"></script>
         <script defer src="../js/screenReader.js"></script>
         <script defer src="../js/wakeLock.js"></script>

@@ -45,6 +45,11 @@ const port = process.env.PORT || 3000;
 
 module.exports = {
     // ==========================================
+    // GetTwin App Bridge URL
+    // ==========================================
+    gettwinAppUrl: process.env.GETTWIN_APP_URL || '',
+
+    // ==========================================
     // Server
     // ==========================================
     server: {
@@ -254,11 +259,11 @@ module.exports = {
     brand: {
         htmlInjection: true,
         app: {
-            language: 'en', // https://en.wikipedia.org/wiki/List_of_ISO_639_language_codes
-            name: 'MiroTalk',
-            title: '<h1>MiroTalk</h1>Free browser based Real-time video calls.<br />Simple, Secure, Fast.',
+            language: 'tr', // https://en.wikipedia.org/wiki/List_of_ISO_639_language_codes
+            name: 'Gettwin Meet',
+            title: '<h1>Gettwin Meet</h1>Gayrimenkul Projelerinizi Tek Platformda Yönetin<br />',
             description:
-                'Start your next video call with a single click. No download, plug-in, or login is required. Just get straight to talking, messaging, and sharing your screen.',
+                'Cebinizdeki Satış Ofisi ile müşterilerinize projeniz sadece bir tık uzakta. 3D Modeller, AI Chat Bot\'lar ve gerçek zamanlı stok yönetimi ile satış hızınızı artırın.',
             joinDescription: 'Pick a room name.<br />How about this one?',
             joinButtonLabel: 'JOIN ROOM',
             customizeRoomButtonLabel: 'CUSTOMIZE ROOM',
@@ -266,10 +271,10 @@ module.exports = {
         },
         og: {
             type: 'app-webrtc',
-            siteName: 'MiroTalk',
-            title: 'Click the link to make a call.',
+            siteName: 'Gettwin Meet',
+            title: 'Görüşmeye gitmek için tıklayın.',
             description:
-                'MiroTalk calling provides real-time HD quality and latency simply not available with traditional technology.',
+                'Cebinizdeki Satış Ofisi ile müşterilerinize projeniz sadece bir tık uzakta. 3D Modeller, AI Chat Bot\'lar ve gerçek zamanlı stok yönetimi ile satış hızınızı artırın.',
             image: 'https://p2p.mirotalk.com/images/preview.png',
             url: 'https://p2p.mirotalk.com',
         },
@@ -287,7 +292,7 @@ module.exports = {
             loginButtonLabel: 'Login',
             joinRoomTitle: 'Pick name.<br />Share URL.<br />Start conference.',
             joinRoomButtonLabel: 'JOIN ROOM',
-            clientTitle: 'MiroTalk WebRTC Video call, Chat Room & Screen Sharing.',
+            clientTitle: 'GetTwin Meet',
             privacyPolicyTitle: 'MiroTalk - privacy and policy.',
             stunTurnTitle: 'Test Stun/Turn Servers.',
             notFoundTitle: 'MiroTalk - 404 Page not found.',
@@ -433,7 +438,7 @@ module.exports = {
             showMySettingsBtn: true,
             showExtraBtn: false,
             showShareQr: false,
-            showShareRoomBtn: false,
+            showShareRoomBtn: true,
             showHideMeBtn: false,
             showRecordStreamBtn: false,
             showFullScreenBtn: true,
@@ -446,34 +451,52 @@ module.exports = {
             showAboutBtn: true, // Please keep me always true, Thank you! (AGPL requirement)
         },
         chat: {
-            showTogglePinBtn: true,
-            showMaxBtn: true,
-            showSaveMessageBtn: true,
+            showTogglePinBtn: false,
+            showMaxBtn: false,
+            showSaveMessageBtn: false,
             showMarkDownBtn: false,
             showChatGPTBtn: false,
             showFileShareBtn: false,
             showShareVideoAudioBtn: false,
-            showParticipantsBtn: true,
+            showParticipantsBtn: false,
         },
         caption: {
-            showTogglePinBtn: true,
-            showMaxBtn: true,
+            showTogglePinBtn: false,
+            showMaxBtn: false,
         },
         settings: {
-            showActiveRoomsBtn: true,
+            showActiveRoomsBtn: false,
             showMicOptionsBtn: true,
-            showTabRoomPeerName: true,
-            showTabRoomParticipants: true,
-            showTabRoomSecurity: true,
-            showTabEmailInvitation: true,
-            showCaptionEveryoneBtn: true,
-            showMuteEveryoneBtn: true,
-            showHideEveryoneBtn: true,
-            showEjectEveryoneBtn: true,
-            showLockRoomBtn: true,
-            showUnlockRoomBtn: true,
-            showShortcutsBtn: true,
+            showTabRoomPeerName: false,
+            showTabRoomParticipants: false,
+            showTabRoomSecurity: false,
+            showTabEmailInvitation: false,
+            showCaptionEveryoneBtn: false,
+            showMuteEveryoneBtn: false,
+            showHideEveryoneBtn: false,
+            showEjectEveryoneBtn: false,
+            showLockRoomBtn: false,
+            showUnlockRoomBtn: false,
+            showShortcutsBtn: false,
             customNoiseSuppression: getEnvBoolean(process.env.CUSTOM_NOISE_SUPPRESSION_ENABLED, true),
+            showVolumeBarRow: false,
+            showSoundsRow: false,
+            showShareRow: false,
+            showButtonsVisibleRow: false,
+            showKeepAwakeRow: false,
+            showPinChatRow: false,
+            showSessionTimerRow: false,
+            // Sidebar tab visibility
+            showTabRoom: false,
+            showTabVideo: true,
+            showTabAudio: true,
+            showTabRecording: false,
+            showTabMedia: false,
+            showTabProfile: false,
+            showTabShortcuts: false,
+            showTabNetwork: true,
+            showTabStyling: false,
+            showTabLanguages: true,
         },
         remote: {
             showAudioVolume: true,
@@ -485,14 +508,14 @@ module.exports = {
             showFileShareBtn: false,
             showShareVideoAudioBtn: false,
             showGeoLocationBtn: false,
-            showPrivateMessageBtn: true,
+            showPrivateMessageBtn: false,
             showZoomInOutBtn: false,
             showVideoFocusBtn: true,
         },
         local: {
             showVideoPipBtn: true,
-            showSnapShotBtn: true,
-            showVideoCircleBtn: true,
+            showSnapShotBtn: false,
+            showVideoCircleBtn: false,
             showZoomInOutBtn: false,
             showVideoFocusBtn: true,
         },
