@@ -274,9 +274,9 @@ module.exports = {
             siteName: 'Gettwin Meet',
             title: 'Görüşmeye gitmek için tıklayın.',
             description:
-                'Cebinizdeki Satış Ofisi ile müşterilerinize projeniz sadece bir tık uzakta. 3D Modeller, AI Chat Bot\'lar ve gerçek zamanlı stok yönetimi ile satış hızınızı artırın.',
-            image: 'https://p2p.mirotalk.com/images/preview.png',
-            url: 'https://p2p.mirotalk.com',
+                'Bu bağlantı size özel olarak oluşturulmuştur. Lütfen başkalarıyla paylaşmayın.',
+            image: 'https://gettwin.io/images/crm/crmHeroImage.webp',
+            url: 'https://gettwin.io',
         },
         site: {
             shortcutIcon: '../images/logo.svg',

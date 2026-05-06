@@ -602,6 +602,9 @@ app.get(['/icetest'], (req, res) => {
     if (Object.keys(req.query).length > 0) {
         log.debug('Request Query', req.query);
     }
+    if (!req.query.iceServers) {
+        return res.redirect(`/icetest?iceServers=${encodeURIComponent(JSON.stringify(iceServers))}`);
+    }
     res.sendFile(views.stunTurn);
 });
 

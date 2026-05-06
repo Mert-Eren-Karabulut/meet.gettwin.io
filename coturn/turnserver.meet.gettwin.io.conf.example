@@ -1,0 +1,38 @@
+# Coturn configuration for running on the same public host as meet.gettwin.io.
+# Copy this to /etc/turnserver.conf on the host and replace the CHANGE_ME values.
+
+listening-port=3478
+# Uncomment only after you set valid TLS certificate paths below.
+# tls-listening-port=5349
+
+# Narrow relay range for a single-instance deployment.
+# If you expect heavier TURN usage, widen this range.
+min-port=49160
+max-port=49260
+
+fingerprint
+lt-cred-mech
+
+user=CHANGE_ME_TURN_USERNAME:CHANGE_ME_TURN_PASSWORD
+
+server-name=meet.gettwin.io
+realm=meet.gettwin.io
+
+total-quota=200
+stale-nonce=600
+
+no-loopback-peers
+no-multicast-peers
+
+denied-peer-ip=10.0.0.0-10.255.255.255
+denied-peer-ip=172.16.0.0-172.31.255.255
+denied-peer-ip=192.168.0.0-192.168.255.255
+
+# Uncomment if the host is NATed and this VM has a private address.
+# external-ip=YOUR_PUBLIC_IP
+
+# Optional TLS. Keep these enabled only if you provide valid cert paths.
+# cert=/path/to/fullchain.pem
+# pkey=/path/to/privkey.pem
+
+simple-log
