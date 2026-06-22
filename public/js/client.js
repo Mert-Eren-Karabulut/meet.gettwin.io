@@ -8418,7 +8418,7 @@ function shareRoomByEmail() {
     });
     flatpickr('#datetimePicker', {
         enableTime: true,
-        dateFormat: 'Y-m-d H:i',
+        dateFormat: 'd-m-Y H:i',
         time_24hr: true,
     });
 }
